@@ -1,73 +1,106 @@
-#####
-load(file.choose())
-library(RgoogleMaps)
+library(sf)
+library(ggplot2)
+library(openxlsx)
+library(dplyr)
+library(shadowtext)
 
-my.lat <- data_l$decimalLatitude
-my.lon <- data_l$decimalLongitude
+load(file.choose())#map.RData
 
-bb = qbbox(my.lat, my.lon) # 範圍
-print(bb)
+# rv3 <- read.xlsx(file.choose())
+# shp <- taiwanmap[c(3,5)]#台灣地圖
+# rv <- st_read(file.choose())
 
-MyMap <- GetMap.bbox(bb$lonR, bb$latR, destfile = "my.png", maptype = "roadmap")
-My.markers <- cbind.data.frame(lat = my.lat, lon = my.lon)
-tmp <- PlotOnStaticMap(MyMap, lat = My.markers[,"lat"], lon = My.markers[,"lon"], destfile
-                         = "my.png", cex=2.5, pch=20, col=1:4, add=F)
 
-##### map for incidence_dataset #####
-map_plot_river <- function(data){
-  id <- match(unique(data$locationID), data$locationID) # 該流域所有採樣點
-  data_loc <- data[id,]
+
+map_plot_result <- function(data, river_no) {
+  colors <- c("blue","blueviolet","brown","chartreuse","chocolate",
+              "cornflowerblue","coral","cornsilk4","darkgoldenrod1",
+              "darkgreen","darkmagenta","darkolivegreen1","darksalmon",
+              "darkslategray","deeppink","gold","firebrick1","forestgreen",
+              "deeppink4","khaki1","sienna4","black","seagreen1","violet",
+              "yellowgreen","rosybrown1")
+  id <- list()
   
-  # 提出經緯度
-  my.lat <- data_loc$decimalLatitude
-  my.lon <- data_loc$decimalLongitude
+  for(i in river_no) {
+    id[[i]] <- match(data[[i]], data_l$locationID)
+  }
   
-  bb <-  qbbox(my.lat, my.lon) # 範圍
+  all_id <- unlist(id)
+  data_loc <- data_l[all_id,]  
+  data_loc <- na.omit(data_loc)
   
-  MyMap <- GetMap.bbox(bb$lonR, bb$latR, destfile = "my.png", maptype = "roadmap")
-  My.markers <- cbind.data.frame(lat = my.lat, lon = my.lon)
-  tmp <- PlotOnStaticMap(MyMap, lat = My.markers[,"lat"], lon = My.markers[,"lon"], destfile
-                         = "my.png", cex=2.5, pch=20, col=1:100, add=F)
+  data_loc$BA_NO <- substr(data_loc$locationID, 1, 4)
+  merged_data <<- merge(data_loc, rv3, by.x = "BA_NO", by.y = "BA_NO")
+  
+  
+  lat <- data_loc$decimalLatitude
+  lon <- data_loc$decimalLongitude
+  
+  multi_lines <- st_cast(rv[,5], "MULTILINESTRING")
+  rvline <- st_cast(multi_lines, "LINESTRING")
+  
+  p <- ggplot() + 
+    geom_sf(data = shp, color = "black") + 
+    geom_sf(data = rvline, color = "skyblue", size = 5) +
+    theme_void()
+  
+  sf <- st_as_sf(data.frame(lon, lat), coords = c("lon", "lat"), crs = 4326)
+  bbox <- st_bbox(sf)
+  
+  if (length(river_no) == 26) {
+    p <- p + coord_sf(xlim = c(120.0612, 121.95), ylim = c(22.03, 25.3))
+    for (i in river_no) {
+      current_id <- id[[i]]
+      current_data <- data_l[current_id,]
+      current_data <- na.omit(current_data)
+      
+      p <- p + geom_point(data = current_data, aes(x = decimalLongitude, y = decimalLatitude), 
+                          color = colors[i], size = 3, na.rm = TRUE)
+    }
+  } else if (length(river_no) == 1) {
+    p <- p + coord_sf(xlim = c(0.9995 * bbox["xmin"], 1.0002 * bbox["xmax"]), 
+                      ylim = c(0.9995 * bbox["ymin"], 1.0002 * bbox["ymax"])) + 
+      geom_shadowtext(data = data_loc, aes(x = decimalLongitude, y = decimalLatitude, label = locality), 
+                      size = 7, color = "white", 
+                      fontface = "bold", vjust = 2)
+    for (i in river_no) {
+      current_id <- id[[i]]
+      current_data <- data_l[current_id,]
+      current_data <- na.omit(current_data)
+      
+      p <- p + geom_point(data = current_data, aes(x = decimalLongitude, y = decimalLatitude), 
+                          color = "red", size = 7, na.rm = TRUE)
+    }
+  } else {
+    p <- p + coord_sf(xlim = c(0.9995 * bbox["xmin"], 1.0002 * bbox["xmax"]), 
+                      ylim = c(0.9995 * bbox["ymin"], 1.0002 * bbox["ymax"]))
+    for (i in river_no) {
+      current_id <- id[[i]]
+      current_data <- data_l[current_id,]
+      current_data <- na.omit(current_data)
+      
+      p <- p + geom_point(data = current_data, aes(x = decimalLongitude, y = decimalLatitude), 
+                          color = colors[i], size = 7, na.rm = TRUE)
+    }
+  }
+  
+  
+  
+  return(p)
 }
 
-map_plot_incidence_dataset <- function(data){
-  id <- match(colnames(data), data_l$locationID) # 該流域所有採樣點
-  data_loc <- data_l[id,]
-  
-  # 提出經緯度
-  my.lat <- data_loc$decimalLatitude
-  my.lon <- data_loc$decimalLongitude
-  
-  bb <-  qbbox(my.lat, my.lon) # 範圍
-  
-  MyMap <- GetMap.bbox(bb$lonR, bb$latR, destfile = "my.png", maptype = "roadmap")
-  My.markers <- cbind.data.frame(lat = my.lat, lon = my.lon)
-  tmp <- PlotOnStaticMap(MyMap, lat = My.markers[,"lat"], lon = My.markers[,"lon"], destfile
-                         = "my.png", cex=2.5, pch=20, col=1:100, add=F)
-}
 
-map_plot <- function(data){
-  id <- match(data, data_l$locationID) # 該流域所有採樣點
-  data_loc <- data_l[id,]
-  
-  # 提出經緯度
-  my.lat <- data_loc$decimalLatitude
-  my.lon <- data_loc$decimalLongitude
-  
-  bb <-  qbbox(my.lat, my.lon) # 範圍
-  
-  MyMap <- GetMap.bbox(bb$lonR, bb$latR, destfile = "my.png", maptype = "roadmap")
-  My.markers <- cbind.data.frame(lat = my.lat, lon = my.lon)
-  tmp <- PlotOnStaticMap(MyMap, lat = My.markers[,"lat"], lon = My.markers[,"lon"], destfile
-                         = "my.png", cex=2.5, pch=20, col=1:100, add=F)
-}
 
 ##### result #####
-data <- data.frame(list_r[[9]]) # 河川list (list_r[[i]])
-map_plot_river(data)
 
-data <- incidence_dataset[[18]][[7]]
-map_plot_incidence_dataset(data)
+####取最好的
+# result_fish1 <- result_fish
+# for (i in c(4,5,7,9,10,12,15,19,21,22,23,24,25,26)) {
+#   result_fish1[[i]] <- unlist(result_fish[[i]][1])
+# }
 
-data <- result_fish[[2]]
-map_plot(data)
+map_plot_result(result_fish1,1:26)
+
+save(data,data_l,data_r,result_fish,result_fish1,rv2,rv3,rv,taiwanmap,shp,size,file = "map.RData")
+
+
