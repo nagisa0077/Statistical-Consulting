@@ -5,6 +5,7 @@ library(ggplot2)
 library(writexl)
 library(dplyr)
 library(shadowtext)
+library(iNEXT)
 d = -40
 l = -530
 
@@ -13,7 +14,8 @@ load("Incidence_data.RData")
 load("map.RData")
 shp <- taiwanmap[c(3, 5)]  #臺灣地圖
 
-###### 將結果印出來(圖片、樣站) #####
+###### function ######
+# 將結果印出來(圖片、樣站)
 map_plot_result <- function(data, river_no) {
   
   id <- list()
@@ -30,6 +32,24 @@ map_plot_result <- function(data, river_no) {
   merged_data <- merge(data_loc, rv3, by.x = "BA_NO", by.y = "BA_NO")
   
   return(merged_data)
+}
+summary <- function(category_no, river_no){
+  category_list <- data.frame(NO = c(1:11),category = c("1 魚類","2 蝦蟹類","3 昆蟲(含水生昆蟲)",
+                                                        "4 螺貝類","5 環節動物","6 藻類",
+                                                        "7 植物","8 哺乳類","9 鳥類",
+                                                        "10 爬蟲類","11 兩棲類"))
+  river_name <-  rv3$BA_NO[which(rv3$NO == river_no)]
+  category_name <- category_list$category[which(category_list$NO == category_no)]
+  
+  if (category_name %in% names(incidence_dataset[[river_name]])) {
+    result <- ChaoRichness(incidence_dataset[[river_name]][[category_name]], datatype = "incidence_raw")
+    return(
+      data.frame(river_name = river_name, category_name = category_name, t = ncol(incidence_dataset[[river_name]][[category_name]]), Chao_Richness = result)
+    )
+  } else {
+    return(print("無該物種種類"))
+  }
+  
 }
 
 ##### UI #####
@@ -101,7 +121,7 @@ ui <- shinyUI(fluidPage(
           draggable = TRUE,  
           top = 30,         
           left = l,
-          width = 100,       
+          width = 150,       
           height = 50,  
           selectInput("category", label = h4("種類"), 
                       choices = list("魚類" = 1,"蝦蟹類" = 2,"昆蟲類" = 3,
@@ -116,7 +136,7 @@ ui <- shinyUI(fluidPage(
         absolutePanel(
           id = "button_panel",
           draggable = TRUE,  
-          top = 200,         
+          top = 150,         
           left = l,
           width = 100,       
           height = 50,  
@@ -438,7 +458,7 @@ ui <- shinyUI(fluidPage(
         height = "auto",
         tabsetPanel(type = "pills",
                     tabPanel("Plot", uiOutput("river_info")),
-                    tabPanel("Summary", print("summary"))
+                    tabPanel("Summary", tableOutput("summary"))
                       ) 
                          )
   )}
@@ -488,6 +508,17 @@ server <- shinyServer(function(input, output, session) {
         HTML(info_text)
       })
       
+      output$summary <- renderTable({
+        summary_data <- data.frame(summary(input$category, i))
+        if(ncol(summary_data)==8){
+        names(summary_data) <- c("河川代碼", "種類", "原有區塊數", "觀測物種",
+                                 "估計物種", "標準差", "95%CI下界","95%CI上界")  # 替換成您的列名
+        summary_data
+        }else{
+          print("該河川無此項物種")
+        }
+        
+      })
       
     })
   })}

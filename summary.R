@@ -16,14 +16,12 @@ summary <- function(category, river){
       data.frame(river_name = river_name, category_name = category_name, t = ncol(incidence_dataset[[river_name]][[category_name]]), Chao_Richness = result)
     )
   } else {
-    return(NULL)
+    return(print("無該物種種類"))
   }
   
 }
 
-category = 1
-river = 1
-
+summary(4,1)
 
 df <- data.frame()
 for(category in 1:11){
@@ -31,6 +29,3 @@ for(category in 1:11){
     df <- rbind(df, summary(category, river))
   }
 }
-
-summary(1, 2)
-summary(3, 2)
