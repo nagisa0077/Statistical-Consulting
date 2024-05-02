@@ -4,7 +4,7 @@ library(openxlsx)
 library(dplyr)
 library(shadowtext)
 
-load(file.choose())#map.RData
+load("map.RData")#map.RData
 
 # rv3 <- read.xlsx(file.choose())
 # shp <- taiwanmap[c(3,5)]#台灣地圖
@@ -101,6 +101,6 @@ map_plot_result <- function(data, river_no) {
 
 map_plot_result(result_fish1,1:26)
 
-save(data,data_l,data_r,result_fish,result_fish1,rv2,rv3,rv,taiwanmap,shp,size,file = "map.RData")
+# save(data,data_l,data_r,result_fish,result_fish1,rv2,rv3,rv,taiwanmap,shp,size,file = "map.RData")
 
 
