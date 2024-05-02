@@ -32,8 +32,6 @@ map_plot_result <- function(data, river_no) {
   return(merged_data)
 }
 
-
-
 ##### UI #####
 ui <- shinyUI(fluidPage(
   # set up  
@@ -91,9 +89,7 @@ ui <- shinyUI(fluidPage(
 
     })
     ,
-  sidebarLayout(
-    ## sidebarPanel
-    sidebarPanel(
+    mainPanel(
       # 輸入
       {# main
       tags$div(
@@ -132,7 +128,7 @@ ui <- shinyUI(fluidPage(
           id = "button_panel",
           draggable = F,  
           top = 62,         
-          left = l+ 140,        
+          left = l + 140,        
           width = 1000,       
           height = 1000,       
           
@@ -427,34 +423,28 @@ ui <- shinyUI(fluidPage(
           actionButton("btn_26", rv3$RV_NAME[26], style = "font-size: 10px; font-weight: bold; box-shadow: 1px 1px 1px lightgray;                      
                          background-color: #FF8000; color: white; border: none; text-shadow: 1px 1px 2px #000;")
         )
-      )})
+      )}
       ,
-    
-    ## mainPanel 
-    mainPanel(
+
       # 輸出
       {tags$div(
-        class = "result",
-        tabsetPanel(type = "tabs",
-                    tabPanel("Summary", 
-                             ),
-                    tabPanel("Plot", 
-                             absolutePanel(
-                               id = "button_panel",
-                               draggable = F,  
-                               top = 10,         
-                               left = l + 550,        
-                               width = 700,       
-                               height = 495.6,       
-                               uiOutput("river_info")
-                                          )
-                             ),
-                    )
-                )
-          
-      })
+      class = "result",
+      absolutePanel(
+        id = "button_panel",
+        draggable = F,  
+        top = 10,         
+        left = l + 550,        
+        width = 700,       
+        height = "auto",
+        tabsetPanel(type = "pills",
+                    tabPanel("Plot", uiOutput("river_info")),
+                    tabPanel("Summary", print("summary"))
+                      ) 
+                         )
+  )}
   )
-  ))
+  )
+)
 
 ##### server #####
 server <- shinyServer(function(input, output, session) {
