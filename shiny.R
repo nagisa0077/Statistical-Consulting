@@ -140,7 +140,7 @@ ui <- shinyUI(fluidPage(
           left = l,
           width = 100,       
           height = 50,  
-          actionButton("btn_download", "Download")
+          actionButton("btn_download", "下載原始檔案")
         ),
         
         ####臺灣地圖
@@ -458,7 +458,10 @@ ui <- shinyUI(fluidPage(
         height = "auto",
         tabsetPanel(type = "pills",
                     tabPanel("Plot", uiOutput("river_info")),
-                    tabPanel("Summary", tableOutput("summary"))
+                    tabPanel("Summary",
+                             uiOutput("table_ori_summary"),
+                             uiOutput("table_opm_summary")
+                    )
                       ) 
                          )
   )}
@@ -482,7 +485,7 @@ server <- shinyServer(function(input, output, session) {
       img <- img(src = paste0(i,".jpeg"), width = "100%", height = "100%",
                  style = "box-shadow: 4px 4px 4px #A3D1D1; border: 2px solid 		#81C0C0;")
       
-      
+      # Plot
       output$river_info <- renderUI({
         merged_data <- map_plot_result(result_fish1,i)
         station_names <- data.frame()
@@ -508,7 +511,18 @@ server <- shinyServer(function(input, output, session) {
         HTML(info_text)
       })
       
-      output$summary <- renderTable({
+      
+      # Summary
+      output$table_ori_summary <- renderUI({
+        tableOutput("ori_summary")
+      })
+      
+      output$table_opm_summary <- renderUI({
+        tableOutput("opm_summary")
+      })
+      
+      # 原始資料估計結果
+      output$ori_summary <- renderTable({
         summary_data <- data.frame(summary(input$category, i))
         if(ncol(summary_data)==8){
         names(summary_data) <- c("河川代碼", "種類", "原有區塊數", "觀測物種",
@@ -518,6 +532,14 @@ server <- shinyServer(function(input, output, session) {
           print("該河川無此項物種")
         }
         
+      })
+      
+      # 篩選結果
+      output$opm_summary <- renderTable({
+        data.frame(
+          C = c("A", "B", "C"),
+          D = c("X", "Y", "Z")
+        )
       })
       
     })
