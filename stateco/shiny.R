@@ -9,6 +9,7 @@ d = -40
 l = -530
 
 ##### 載入地圖資料 #####
+load("Incidence_data.RData")
 load("map.RData")
 shp <- taiwanmap[c(3, 5)]  #臺灣地圖
 
@@ -34,51 +35,50 @@ map_plot_result <- function(data, river_no) {
 
 
 ##### UI #####
-ui <- shinyUI(navbarPage("特有生物中心",
-  # Map
-    {tabPanel("Map",fluidPage(
-    tags$head(
-      tags$meta(name="viewport", content="width = device-width, initial-scale=1.0"),
-      tags$title("河川情勢調查"),
-      tags$style("
-      body {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        width: 100%;
-        height: 100%;
-      }
-      
-      .paper{
-        display: flex
-      }
-      
-      .main{
-        flex: none;
-        width = 30%
-      }
-      
-      .result{
-        flex = auto
-      }
-      
-      @media screen and (min-aspect-ratio: 1.9) {
+ui <- shinyUI(fluidPage(
+  # set up  
+    {tags$head(
+        tags$meta(name="viewport", content="width = device-width, initial-scale=1.0"),
+        tags$title("河川情勢調查"),
+        tags$style("
         body {
-          transform: scale(1.4);
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          width: 100%;
+          height: 100%;
         }
-      }
-  
-     
-      @media screen and (max-aspect-ratio: 1.9) {
-        body {
-          transform: scale(1);
+    
+        .paper{
+          display: flex
         }
-      }
-    ")
-    )
+    
+        .main{
+          flex: none;
+          width : 30%
+        }
+    
+        .result{
+          flex : auto;
+        }
+    
+        @media screen and (min-aspect-ratio: 1.9) {
+          body {
+            transform: scale(1.4);
+          }
+        }
+    
+    
+        @media screen and (max-aspect-ratio: 1.9) {
+          body {
+            transform: scale(1);
+          }
+        }
+      ")
+    )}
     ,
     ##標題
-    {titlePanel(
+    titlePanel({
 
       tags$div(
 
@@ -89,27 +89,44 @@ ui <- shinyUI(navbarPage("特有生物中心",
         HTML("<span style='font-weight: bold; font-size: 120%;'>河川情勢調查</span>")
       )
 
-    )},
-    
-    ## mainPanel
-    {mainPanel(
-      
-      ####臺灣地圖底圖
-      
-      # tags$div(absolutePanel(
-      #   class = "paper",
-      #   id = "button_panel",
-      #   draggable = F,  
-      #   top = -130,         
-      #   left = l+ -170,        
-      #   width = 1000,       
-      #   height = 1000,       
-      #       
-      #   img(src = "allmap1.png", width = "160%", height = "150%")
-      #   
-      #     ),
+    })
+    ,
+  sidebarLayout(
+    ## sidebarPanel
+    sidebarPanel(
+      # 輸入
+      {# main
       tags$div(
         class = "main",
+        
+        #### 種類
+        absolutePanel(
+          id = "category",
+          draggable = TRUE,  
+          top = 30,         
+          left = l,
+          width = 100,       
+          height = 50,  
+          selectInput("category", label = h4("種類"), 
+                      choices = list("魚類" = 1,"蝦蟹類" = 2,"昆蟲類" = 3,
+                                     "螺貝類" = 4,"環節動物" = 5,"藻類" = 6,
+                                     "植物" = 7,"哺乳類" = 8,"鳥類" = 9,
+                                     "爬蟲類" = 10,"兩棲類" = 11),
+                      selected = 1)
+        ),
+        
+        #### 下載檔案
+        
+        absolutePanel(
+          id = "button_panel",
+          draggable = TRUE,  
+          top = 200,         
+          left = l,
+          width = 100,       
+          height = 50,  
+          actionButton("btn_download", "Download")
+        ),
+        
         ####臺灣地圖
         absolutePanel(
           id = "button_panel",
@@ -125,7 +142,6 @@ ui <- shinyUI(navbarPage("特有生物中心",
         
         ####按鈕位置、大小
         #磺溪
-        
         absolutePanel(
           id = "button_panel",
           draggable = TRUE,  
@@ -411,102 +427,41 @@ ui <- shinyUI(navbarPage("特有生物中心",
           actionButton("btn_26", rv3$RV_NAME[26], style = "font-size: 10px; font-weight: bold; box-shadow: 1px 1px 1px lightgray;                      
                          background-color: #FF8000; color: white; border: none; text-shadow: 1px 1px 2px #000;")
         )
-      ),
-      tags$div(
-        class = "result",
-        #結果圖、樣站
-        absolutePanel(
-          id = "button_panel",
-          draggable = F,  
-          top = 10,         
-          left = l+ 550,        
-          width = 700,       
-          height = 495.6,       
-          uiOutput("river_info")
-        )
-      )
-      # )  
-      
-    )}
+      )})
+      ,
     
-  ))},
-  
-  #Summary
-  {tabPanel("Summary",fluidPage(
-    # set up
-    tags$head(
-      tags$meta(name="viewport", content="width = device-width, initial-scale=1.0"),
-      tags$title("Summary"),
-      tags$style("
-      body {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        width: 100%;
-        height: 100%;
-      }
-      
-      .paper{
-        display: flex
-      }
-      
-      .main{
-        flex: none;
-        width = 30%
-      }
-      
-      .result{
-        flex = auto
-      }
-      
-      @media screen and (min-aspect-ratio: 1.9) {
-        body {
-          transform: scale(1.4);
-        }
-      }
-  
-     
-      @media screen and (max-aspect-ratio: 1.9) {
-        body {
-          transform: scale(1);
-        }
-      }
-    ")
-    )
-    ,
-    # mainPanel
+    ## mainPanel 
     mainPanel(
-      tags$div(
-        class = "main",
-        absolutePanel(
-          id = "select",
-          draggable = TRUE,  
-          top = 30,         
-          left = l-20,
-          width = 100,       
-          height = 50,  
-          selectInput("select", label = h4("種類"), 
-                      choices = list("魚類" = 1,"蝦蟹類" = 2,"昆蟲類" = 3,
-                                     "螺貝類" = 4,"環節動物" = 5,"藻類" = 6,
-                                     "植物" = 7,"哺乳類" = 8,"鳥類" = 9,
-                                     "爬蟲類" = 10,"兩棲類" = 11),selected = 1)
-          ),
-        
-  
-      ),
-      # result
-      tags$div(
+      # 輸出
+      {tags$div(
         class = "result",
-      )
-
-    )
-    
-    
-  ))}
-))
+        tabsetPanel(type = "tabs",
+                    tabPanel("Summary", 
+                             ),
+                    tabPanel("Plot", 
+                             absolutePanel(
+                               id = "button_panel",
+                               draggable = F,  
+                               top = 10,         
+                               left = l + 550,        
+                               width = 700,       
+                               height = 495.6,       
+                               uiOutput("river_info")
+                                          )
+                             ),
+                    )
+                )
+          
+      })
+  )
+  ))
 
 ##### server #####
 server <- shinyServer(function(input, output, session) {
+  # summary
+  {
+    output$category <- renderPrint({input$category})
+  }
   
   # Map 當按按鈕時印出結果
   {lapply(1:26, function(i) {
@@ -533,7 +488,7 @@ server <- shinyServer(function(input, output, session) {
           "<b>挑選樣站: </b>","<br>",
           
           "<div style='text-align: left; font-size: 16px; font-weight: bold;
-          color: white;text-shadow: 1px 1px 2px #000;'>",
+          color: black;text-shadow: 1px 1px 2px #000;'>",
           paste(station_names, collapse = "、 "),"<br>",
           "</div>",
           "</div>",
@@ -546,10 +501,6 @@ server <- shinyServer(function(input, output, session) {
       
     })
   })}
-  
-  # summary
-  
-  
 })
 
 ##### shinyApp #####
