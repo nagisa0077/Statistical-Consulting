@@ -6,6 +6,7 @@ library(writexl)
 library(dplyr)
 library(shadowtext)
 library(iNEXT)
+library(writexl)
 d = -40
 l = -530
 
@@ -44,12 +45,38 @@ summary <- function(category_no, river_no){
   if (category_name %in% names(incidence_dataset[[river_name]])) {
     result <- ChaoRichness(incidence_dataset[[river_name]][[category_name]], datatype = "incidence_raw")
     return(
-      data.frame(river_name = river_name, category_name = category_name, t = ncol(incidence_dataset[[river_name]][[category_name]]), Chao_Richness = result)
+      data.frame(river_name = rv3$RV_NAME[which(rv3$BA_NO== river_name)], category_name = category_name, t = ncol(incidence_dataset[[river_name]][[category_name]]), Chao_Richness = result)
     )
   } else {
     return(print("無該物種種類"))
   }
   
+}
+summary2 <- function(category_no, river_no){
+  category_list <- data.frame(NO = c(1:11),category = c("1 魚類","2 蝦蟹類","3 昆蟲(含水生昆蟲)",
+                                                        "4 螺貝類","5 環節動物","6 藻類",
+                                                        "7 植物","8 哺乳類","9 鳥類",
+                                                        "10 爬蟲類","11 兩棲類"))
+  river_name <-  rv3$BA_NO[which(rv3$NO == river_no)]
+  category_name <- category_list$category[which(category_list$NO == category_no)]
+  
+  if (category_name %in% names(incidence_dataset[[river_name]])) {
+    result <- ChaoRichness(incidence_dataset[[river_name]][[category_name]], datatype = "incidence_raw")
+    return(
+      data.frame(river_name = rv3$RV_NAME[which(rv3$BA_NO== river_name)], category_name = category_name, t = ncol(incidence_dataset[[river_name]][[category_name]]), Chao_Richness = result)
+    )
+  } else {
+    return(NULL)
+  }
+  
+}
+
+# data.frame 估計物種
+df_org <- data.frame()
+for(category_no in 1:11){
+  for(river_no in 1:26){
+    df_org <- data.frame(rbind(df_org, summary2(category_no, river_no)))
+  }
 }
 
 ##### UI #####
@@ -140,7 +167,7 @@ ui <- shinyUI(fluidPage(
           left = l,
           width = 100,       
           height = 50,  
-          actionButton("btn_download", "下載原始檔案")
+          downloadButton("downloadData", "下載原始檔案")
         ),
         
         ####臺灣地圖
@@ -485,6 +512,7 @@ server <- shinyServer(function(input, output, session) {
       img <- img(src = paste0(i,".jpeg"), width = "100%", height = "100%",
                  style = "box-shadow: 4px 4px 4px #A3D1D1; border: 2px solid 		#81C0C0;")
       
+      
       # Plot
       output$river_info <- renderUI({
         merged_data <- map_plot_result(result_fish1,i)
@@ -516,12 +544,9 @@ server <- shinyServer(function(input, output, session) {
       output$table_ori_summary <- renderUI({
         tableOutput("ori_summary")
       })
-      
       output$table_opm_summary <- renderUI({
         tableOutput("opm_summary")
       })
-      
-      # 原始資料估計結果
       output$ori_summary <- renderTable({
         summary_data <- data.frame(summary(input$category, i))
         if(ncol(summary_data)==8){
@@ -532,18 +557,29 @@ server <- shinyServer(function(input, output, session) {
           print("該河川無此項物種")
         }
         
-      })
-      
-      # 篩選結果
+      }) # 原始資料估計結果
       output$opm_summary <- renderTable({
         data.frame(
           C = c("A", "B", "C"),
           D = c("X", "Y", "Z")
         )
-      })
+      }) # 篩選結果
+      
+      
+      
       
     })
   })}
+  
+  # 提供檔案下載
+  output$downloadData <- downloadHandler(
+    filename = function() {
+      paste("data-", Sys.Date(), ".xlsx", sep="")
+    },
+    content = function(file) {
+      write_xlsx(df_org, file)
+    }
+  )
 })
 
 ##### shinyApp #####
