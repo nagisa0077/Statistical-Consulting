@@ -11,8 +11,8 @@ d = -40
 l = -530
 
 ##### 載入地圖資料 #####
-load("Incidence_data.RData")
-load("map.RData")
+Incidence_data.RData <- load("Incidence_data.RData")
+map.RData <- load("map.RData")
 shp <- taiwanmap[c(3, 5)]  #臺灣地圖
 
 ###### function ######
@@ -62,9 +62,8 @@ summary2 <- function(category_no, river_no){
   
   if (category_name %in% names(incidence_dataset[[river_name]])) {
     result <- ChaoRichness(incidence_dataset[[river_name]][[category_name]], datatype = "incidence_raw")
-    return(
-      data.frame(river_name = rv3$RV_NAME[which(rv3$BA_NO== river_name)], category_name = category_name, t = ncol(incidence_dataset[[river_name]][[category_name]]), Chao_Richness = result)
-    )
+    df <- data.frame(river_name = rv3$RV_NAME[which(rv3$BA_NO== river_name)], category_name = category_name, t = ncol(incidence_dataset[[river_name]][[category_name]]), Chao_Richness = result)
+    return(df)
   } else {
     return(NULL)
   }
@@ -78,6 +77,8 @@ for(category_no in 1:11){
     df_org <- data.frame(rbind(df_org, summary2(category_no, river_no)))
   }
 }
+colnames(df_org) <- c("河川", "種類", "原有區塊數", "觀測物種",
+                  "估計物種", "標準差", "95%CI下界","95%CI上界")
 
 ##### UI #####
 ui <- shinyUI(fluidPage(
@@ -128,7 +129,7 @@ ui <- shinyUI(fluidPage(
       tags$div(
 
         style = "text-align: center; font-weight: bold; position: relative; z-index: 9999;
-        text-shadow: 1px 1px 2px #000;color: Black",
+        color: Black",
         HTML("<span style='font-size: 80%; font-weight: bold;'>特有生物中心</span>"),
         br(),
         HTML("<span style='font-weight: bold; font-size: 120%;'>河川情勢調查</span>")
@@ -147,7 +148,7 @@ ui <- shinyUI(fluidPage(
           id = "category",
           draggable = TRUE,  
           top = 30,         
-          left = l,
+          left = l-70,
           width = 150,       
           height = 50,  
           selectInput("category", label = h4("種類"), 
@@ -159,12 +160,24 @@ ui <- shinyUI(fluidPage(
         ),
         
         #### 下載檔案
+        absolutePanel(
+          id = "data",
+          draggable = TRUE,  
+          top = 130,         
+          left = l-70,
+          width = 200,       
+          height = 50, 
+          selectInput("data", label = h4("選擇檔案"), 
+                      choices = list("All plot 物種估計結果",
+                                     "溪流推薦站點"),
+                      selected = 1)
+        ),
         
         absolutePanel(
           id = "button_panel",
           draggable = TRUE,  
-          top = 150,         
-          left = l,
+          top = 250,         
+          left = l-70,
           width = 100,       
           height = 50,  
           downloadButton("downloadData", "下載原始檔案")
@@ -486,7 +499,11 @@ ui <- shinyUI(fluidPage(
         tabsetPanel(type = "pills",
                     tabPanel("Plot", uiOutput("river_info")),
                     tabPanel("Summary",
+                             h4("原始資料統計結果"),
                              uiOutput("table_ori_summary"),
+                             h4("推薦站點"),
+                             uiOutput("table_plot"),
+                             h4("推薦站點統計結果"),
                              uiOutput("table_opm_summary")
                     )
                       ) 
@@ -529,7 +546,7 @@ server <- shinyServer(function(input, output, session) {
           "<b>挑選樣站: </b>","<br>",
           
           "<div style='text-align: left; font-size: 16px; font-weight: bold;
-          color: black;text-shadow: 1px 1px 2px #000;'>",
+          color: black;'>",
           paste(station_names, collapse = "、 "),"<br>",
           "</div>",
           "</div>",
@@ -544,13 +561,16 @@ server <- shinyServer(function(input, output, session) {
       output$table_ori_summary <- renderUI({
         tableOutput("ori_summary")
       })
+      output$table_plot <- renderUI({
+        tableOutput("plot")
+      })
       output$table_opm_summary <- renderUI({
         tableOutput("opm_summary")
       })
       output$ori_summary <- renderTable({
         summary_data <- data.frame(summary(input$category, i))
         if(ncol(summary_data)==8){
-        names(summary_data) <- c("河川代碼", "種類", "原有區塊數", "觀測物種",
+        names(summary_data) <- c("河川", "種類", "原有區塊數", "觀測物種",
                                  "估計物種", "標準差", "95%CI下界","95%CI上界")  # 替換成您的列名
         summary_data
         }else{
@@ -558,6 +578,13 @@ server <- shinyServer(function(input, output, session) {
         }
         
       }) # 原始資料估計結果
+      output$plot <- renderTable({
+        merged_data <- map_plot_result(result_fish1, i)
+        river_name <- rv3$RV_NAME[which(rv3$NO == i)]
+        station_names <- merged_data$locality
+        data.frame('河川' = river_name,
+                   '推薦站點' = t(station_names))
+      }) # 推薦站點
       output$opm_summary <- renderTable({
         data.frame(
           C = c("A", "B", "C"),
@@ -565,21 +592,31 @@ server <- shinyServer(function(input, output, session) {
         )
       }) # 篩選結果
       
-      
-      
-      
     })
   })}
   
-  # 提供檔案下載
-  output$downloadData <- downloadHandler(
-    filename = function() {
-      paste("data-", Sys.Date(), ".xlsx", sep="")
-    },
-    content = function(file) {
-      write_xlsx(df_org, file)
-    }
-  )
+  # 下載選定的資料檔案
+  {lapply(1:26, function(i) {
+    observeEvent(input[[paste0("btn_", i)]], {
+      output$downloadData <- downloadHandler(
+        filename = function() {
+          paste(input$data, ".xlsx", sep="")
+        },
+        content = function(file) {
+          df <- switch(input$data,
+                       "溪流推薦站點" = {
+                         merged_data <- map_plot_result(result_fish1, i)
+                         river_name <- rv3$RV_NAME[which(rv3$NO == i)]
+                         station_names <- merged_data$locality
+                         data.frame('溪流名稱' = river_name,
+                                    '推薦站點' = t(station_names))
+                       },
+                       "All plot 物種估計結果" = df_org)
+          write_xlsx(df, file)
+        }
+      )
+    })
+  })}
 })
 
 ##### shinyApp #####
