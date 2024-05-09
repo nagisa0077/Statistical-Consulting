@@ -488,27 +488,9 @@ ui <- shinyUI(fluidPage(
 
       # 輸出
       {tags$div(
-      class = "result",
-      absolutePanel(
-        id = "button_panel",
-        draggable = F,  
-        top = 10,         
-        left = l + 550,        
-        width = 700,       
-        height = "auto",
-        tabsetPanel(type = "pills",
-                    tabPanel("Plot", uiOutput("river_info")),
-                    tabPanel("Summary",
-                             h4("原始資料統計結果"),
-                             uiOutput("table_ori_summary"),
-                             h4("推薦站點"),
-                             uiOutput("table_plot"),
-                             h4("推薦站點統計結果"),
-                             uiOutput("table_opm_summary")
-                    )
-                      ) 
-                         )
-  )}
+        class = "result",
+        uiOutput("conditional_content")
+      )}
   )
   )
 )
@@ -516,9 +498,7 @@ ui <- shinyUI(fluidPage(
 ##### server #####
 server <- shinyServer(function(input, output, session) {
   # summary
-  {
-    output$category <- renderPrint({input$category})
-  }
+  output$category <- renderPrint({input$category})
   
   # Map 當按按鈕時印出結果
   {lapply(1:26, function(i) {
@@ -592,11 +572,42 @@ server <- shinyServer(function(input, output, session) {
         )
       }) # 篩選結果
       
+      # out 表格
+      output$conditional_content <- renderUI({
+        btn_sum <- sum(sapply(1:26, function(i) input[[paste0("btn_", i)]]))
+        if (btn_sum > 0) {
+          tags$div(
+            id = "button_panel",
+            absolutePanel(
+              draggable = F,  
+              top = 10,         
+              left = l + 550,        
+              width = 700,       
+              height = "auto",
+              tabsetPanel(
+                type = "pills",
+                tabPanel("Plot", uiOutput("river_info")),
+                tabPanel("Summary",
+                         h4("原始資料統計結果"),
+                         uiOutput("table_ori_summary"),
+                         h4("推薦站點"),
+                         uiOutput("table_plot"),
+                         h4("推薦站點統計結果"),
+                         uiOutput("table_opm_summary")
+                )
+              ) 
+            )
+          )
+        } else {
+          NULL
+        }
+      })
+      
     })
   })}
   
   # 下載選定的資料檔案
-  {lapply(1:26, function(i) {
+  lapply(1:26, function(i) {
     observeEvent(input[[paste0("btn_", i)]], {
       output$downloadData <- downloadHandler(
         filename = function() {
@@ -616,7 +627,7 @@ server <- shinyServer(function(input, output, session) {
         }
       )
     })
-  })}
+  })
 })
 
 ##### shinyApp #####
