@@ -7,6 +7,7 @@ library(dplyr)
 library(shadowtext)
 library(iNEXT)
 library(writexl)
+library(DT)
 d = -40
 l = -530
 
@@ -110,7 +111,7 @@ ui <- shinyUI(fluidPage(
     
         @media screen and (min-aspect-ratio: 1.9) {
           body {
-            transform: scale(1.4);
+            transform: scale(1.2);
           }
         }
     
@@ -121,8 +122,8 @@ ui <- shinyUI(fluidPage(
           }
         }
       ")
-    )}
-    ,
+    )},
+    
     ##標題
     titlePanel({
 
@@ -151,7 +152,7 @@ ui <- shinyUI(fluidPage(
           left = l-70,
           width = 150,       
           height = 50,  
-          selectInput("category", label = h4("種類"), 
+          selectInput("category", label = h4(tags$b("種類")), 
                       choices = list("魚類" = 1,"蝦蟹類" = 2,"昆蟲類" = 3,
                                      "螺貝類" = 4,"環節動物" = 5,"藻類" = 6,
                                      "植物" = 7,"哺乳類" = 8,"鳥類" = 9,
@@ -167,7 +168,7 @@ ui <- shinyUI(fluidPage(
           left = l-70,
           width = 200,       
           height = 50, 
-          selectInput("data", label = h4("選擇檔案"), 
+          selectInput("data", label = h4(tags$b("選擇檔案")), 
                       choices = list("All plot 物種估計結果",
                                      "溪流推薦站點"),
                       selected = 1)
@@ -175,12 +176,12 @@ ui <- shinyUI(fluidPage(
         
         absolutePanel(
           id = "button_panel",
-          draggable = TRUE,  
+          draggable = F,  
           top = 250,         
           left = l-70,
           width = 100,       
           height = 50,  
-          downloadButton("downloadData", "下載原始檔案")
+          downloadButton("downloadData", tags$b("下載原始檔案"))
         ),
         
         ####臺灣地圖
@@ -542,7 +543,7 @@ server <- shinyServer(function(input, output, session) {
         tableOutput("ori_summary")
       })
       output$table_plot <- renderUI({
-        tableOutput("plot")
+        DTOutput("plot")
       })
       output$table_opm_summary <- renderUI({
         tableOutput("opm_summary")
@@ -558,12 +559,14 @@ server <- shinyServer(function(input, output, session) {
         }
         
       }) # 原始資料估計結果
-      output$plot <- renderTable({
+      output$plot <- renderDT({
         merged_data <- map_plot_result(result_fish1, i)
         river_name <- rv3$RV_NAME[which(rv3$NO == i)]
         station_names <- merged_data$locality
-        data.frame('河川' = river_name,
-                   '推薦站點' = t(station_names))
+        datatable(data.frame(
+                   '推薦站點' = station_names),
+                  options = list(searching = FALSE,
+                                 pageLength = 5))
       }) # 推薦站點
       output$opm_summary <- renderTable({
         data.frame(
@@ -586,14 +589,16 @@ server <- shinyServer(function(input, output, session) {
               height = "auto",
               tabsetPanel(
                 type = "pills",
-                tabPanel("Plot", uiOutput("river_info")),
-                tabPanel("Summary",
-                         h4("原始資料統計結果"),
+                tabPanel(tags$b("推薦樣站地圖"), uiOutput("river_info")),
+                tabPanel(tags$b("推薦樣站統計資訊"),
+
+                         h3(tags$b("原始資料統計結果")),
                          uiOutput("table_ori_summary"),
-                         h4("推薦站點"),
-                         uiOutput("table_plot"),
                          h4("推薦站點統計結果"),
-                         uiOutput("table_opm_summary")
+                         uiOutput("table_opm_summary"),
+                         h3(tags$b(river_name <- rv3$RV_NAME[which(rv3$NO == i)],"推薦站點")),
+                         uiOutput("table_plot")
+                         
                 )
               ) 
             )
