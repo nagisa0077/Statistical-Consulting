@@ -13,20 +13,22 @@ library(tibble)
 d = -40
 l = -530
 
+
 ##### 載入地圖資料 #####
-Incidence_data.RData <- load("Incidence_data.RData")
-map.RData <- load("map.RData")
-result_fish_new <- load("result_fish_new.RData")
+load("Incidence_data.RData")
+load("map.RData")
+load("all_species.RData")
+
 shp <- taiwanmap[c(3, 5)]  #臺灣地圖
 
 ###### function ######
 # 將結果印出來(圖片、樣站)
-map_plot_result <- function(data, river_no) {
+map_plot_result <- function(data, category_no,river_no) {
   
   id <- list()
   
   for(i in river_no) {
-    id[[i]] <- match(data[[i]][["site"]], data_l$locationID)
+    id[[i]] <- match(data[[category_no]][[i]][["site"]], data_l$locationID)
   }
   
   all_id <- unlist(id)
@@ -47,13 +49,16 @@ summary <- function(category_no, river_no){
   category_name <- category_list$category[which(category_list$NO == category_no)]
   
   if (category_name %in% names(incidence_dataset[[river_name]])) {
-    result <- ChaoRichness(incidence_dataset[[river_name]][[category_name]], datatype = "incidence_raw")
+    result_Richness <- ChaoRichness(incidence_dataset[[river_name]][[category_name]], datatype = "incidence_raw")
+    result_Shannon <- ChaoShannon(incidence_dataset[[river_name]][[category_name]], datatype = "incidence_raw")
+    result_Simpson <- ChaoSimpson(incidence_dataset[[river_name]][[category_name]], datatype = "incidence_raw")
     return(
       data.frame(river_name = rv3$RV_NAME[which(rv3$BA_NO== river_name)], 
                  category_name = category_name, 
                  t = ncol(incidence_dataset[[river_name]][[category_name]]), 
-                 origin_cv = results[[river_no]][["ChaoRichness"]][["origin_cv"]],
-                 Chao_Richness = result)
+                 origin_cv = all_species[[category_no]][[river_no]][["ChaoRichness"]][["origin_cv"]],
+                 Obs = result_Richness$Observed, Est = result_Richness$Estimator,
+                 Shannon = result_Shannon$Observed, Simpson = result_Simpson$Observed)
     )
   } else {
     return(print("無該物種種類"))
@@ -73,12 +78,12 @@ summary2 <- function(category_no, river_no){
     df <- data.frame(river_name = rv3$RV_NAME[which(rv3$BA_NO== river_name)], 
                      category_name = category_name, 
                      t = ncol(incidence_dataset[[river_name]][[category_name]]),
-                     ct = results[[river_no]][["information"]][["choose"]],
-                     st = results[[river_no]][["information"]][["suggestion"]],
-                     origin_cv = results[[river_no]][["ChaoRichness"]][["origin_cv"]],
+                     ct = all_species[[category_no]][[river_no]][["information"]][["choose"]],
+                     st = all_species[[category_no]][[river_no]][["information"]][["suggestion"]],
+                     origin_cv = all_species[[category_no]][[river_no]][["ChaoRichness"]][["origin_cv"]],
                      Chao_Richness = result,
-                     info_obs = results[[river_no]][["ChaoRichness"]][["Observed"]],
-                     info = results[[1]][["information"]][c(4,5)])
+                     info_obs = all_species[[category_no]][[river_no]][["ChaoRichness"]][["Observed"]],
+                     info = all_species[[category_no]][[river_no]][["information"]][c(4,5)])
     
     return(df)
   } else {
@@ -86,12 +91,16 @@ summary2 <- function(category_no, river_no){
   }
   
 }
-recommend_plot <- function(river_no){
-  df <- data.frame(Obs = results[[river_no]][["ChaoRichness"]][["Observed"]],results[[river_no]][["information"]])
+
+recommend_plot <- function(category_no,river_no){
+  df <- data.frame(Obs = all_species[[category_no]][[river_no]][["ChaoRichness"]][["Observed"]],
+                   Shannon = all_species[["fish"]][[1]][["ChaoShannon"]][["Observed"]],
+                   Simpon = all_species[["fish"]][[1]][["ChaoSimpson"]][["Observed"]],
+                   sc = all_species[[category_no]][[river_no]][["information"]][["cv"]],all_species[[category_no]][[river_no]][["information"]][c(1,2,3)])
   if(df$suggestion >= 0){
-    colnames(df) <- c("觀測物種數","總樣站數","選取樣站數","建議新增樣站數","估計物種數","樣本涵蓋率")
+    colnames(df) <- c("觀測物種數","Shannon","Simpson","樣本涵蓋率","總樣站數","選取樣站數","建議新增樣站數")
   }else{
-    colnames(df) <- c("觀測物種數","總樣站數","選取樣站數","建議減少樣站數","估計物種數","樣本涵蓋率")
+    colnames(df) <- c("觀測物種數","Shannon","Simpson","樣本涵蓋率","總樣站數","選取樣站數","建議減少樣站數")
   }
   return(df)
 }
@@ -109,19 +118,34 @@ colnames(df_org) <- c("河川", "種類", "原始樣站數", "選取樣站數", 
 
 ##### UI #####
 ui <- shinyUI(fluidPage(
-  # set up  
-  {tags$head(
-    tags$meta(name="viewport", content="width = device-width, initial-scale=1.0"),
-    tags$title("河川情勢調查"),
-    tags$style("
+    
+    ## CSS標籤  
+    {tags$head(
+        tags$meta(name="viewport", content="width = device-width, initial-scale=1.0"),
+        tags$title("河川情勢調查"),
+        tags$style("
         body {
           display: flex;
           justify-content: center;
           align-items: center;
           width: 100%;
           height: 100%;
+          background-color: #f0f0f0;
         }
-    
+        .circlered {
+          width: 20px;
+          height: 20px;
+          background-color: red;
+          border-radius: 50%;
+          display: inline-block;
+        }
+        .circleorange{
+          width: 20px;
+          height: 20px;
+          background-color: orange;
+          border-radius: 50%;
+          display: inline-block;
+        }
         .paper{
           display: flex
         }
@@ -148,25 +172,25 @@ ui <- shinyUI(fluidPage(
           }
         }
       ")
-  )},
-  
-  ##標題
-  titlePanel({
+    )},
     
-    tags$div(
-      
-      style = "text-align: center; font-weight: bold; position: relative; z-index: 9999;
+    ##標題
+    titlePanel({
+
+      tags$div(
+
+        style = "text-align: center; font-weight: bold; position: relative; z-index: 9999;
         color: Black",
-      HTML("<span style='font-size: 80%; font-weight: bold;'>特有生物中心</span>"),
-      br(),
-      HTML("<span style='font-weight: bold; font-size: 120%;'>河川情勢調查</span>")
-    )
-    
-  })
-  ,
-  mainPanel(
-    # 輸入
-    {# main
+        HTML("<span style='font-size: 80%; font-weight: bold;'>特有生物中心</span>"),
+        br(),
+        HTML("<span style='font-weight: bold; font-size: 120%;'>河川情勢調查</span>")
+      )
+
+    })
+    ,
+    mainPanel(
+      # 輸入
+      {# main
       tags$div(
         class = "main",
         
@@ -511,54 +535,65 @@ ui <- shinyUI(fluidPage(
                          background-color: #FF8000; color: white; border: none; text-shadow: 1px 1px 2px #000;")
         )
       )}
-    ,
-    
-    # 輸出
-    {tags$div(
-      class = "result",
-      uiOutput("conditional_content")
-    )}
+      ,
+
+      # 輸出
+      {tags$div(
+        class = "result",
+        uiOutput("conditional_content")
+      )}
   )
-)
+  )
 )
 
 ##### server #####
 server <- shinyServer(function(input, output, session) {
-  # summary
-  output$category <- renderPrint({input$category})
-  
   # Map 當按按鈕時印出結果
   {lapply(1:26, function(i) {
     
     observeEvent(input[[paste0("btn_", i)]], {
       
-      
-      img <- img(src = paste0(i,".jpeg"), width = "100%", height = "100%",
-                 style = "box-shadow: 4px 4px 4px #A3D1D1; border: 2px solid 		#81C0C0;")
-      
+      imgpath <- paste0("www/",input$category,"-",i,".jpeg")
+      if(file.exists(imgpath)){
+        img <- img(src = paste0(input$category,"-",i,".jpeg"), width = "100%", height = "100%",
+                   style = "box-shadow: 4px 4px 4px #A3D1D1; border: 2px solid 		#81C0C0;")
+        point <- tags$div(tags$div(class = "circlered"),
+                          tags$span(tags$b("挑選到的樣站", style = 'font-size: 20px; margin-left: 5px;')),
+                          tags$div(class = "circleorange", style = 'margin-left: 10px;' ),
+                          tags$span(tags$b("未被挑選到的樣站", style='font-size: 20px; margin-left: 5px;')),
+                          style = "display: flex; justify-content: flex-end; align-items: center;")
+        }else{
+        img <- NULL
+        point <- NULL
+        h3(tags$b("此河流無該物種"))
+      }
       
       # Plot
       output$river_info <- renderUI({
-        merged_data <- map_plot_result(results,i)
+        category <- as.numeric(input$category)
+        merged_data <- map_plot_result(all_species, category,i)
         station_names <- data.frame()
         river_name <- rv3$RV_NAME[which(rv3$NO == i)]
         station_names <- merged_data$locality
         info_text <- paste0(
-          "<div style='font-size: 22px; text-align: center; font-weight: bold;
-          color: black;text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff;'>",
+          "<div style='font-size: 26px; text-align: center; font-weight: bold;
+          color: black;text-shadow: none;'>",
           "<b>",river_name,"樣站資訊","</b>", "<br>","<br>",
           
-          "<div style='font-size: 18px;  font-weight: bold; text-align: left;
-          color: black;text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff;'>",
-          "<b>挑選樣站: </b>","<br>",
-          
-          "<div style='text-align: left; font-size: 16px; font-weight: bold;
-          color: black;'>",
-          paste(station_names, collapse = "、 "),"<br>",
+            "<div style='font-size: 20px;  font-weight: bold; text-align: left; 
+            background-color: none; color: black; text-shadow: none;'>",
+            "<b>挑選樣站: </b>","<br>",
+            
+              "<div style='text-align: left; font-size: 16px; font-weight: bold;
+              color: black; background-color: none;'>",
+              paste(station_names, collapse = "、 "),"<br>",
+              "</div>",
+            "</div>",
           "</div>",
-          "</div>",
-          "</div>",
-          img 
+          img,
+          tags$br(),
+          tags$br(),
+          point
         )
         HTML(info_text)
       })
@@ -575,18 +610,20 @@ server <- shinyServer(function(input, output, session) {
         tableOutput("opm_summary")
       })
       output$ori_summary <- renderTable({
-        summary_data <- data.frame(summary(input$category, i))
-        if(ncol(summary_data)==9){
+        category <- as.numeric(input$category)
+        summary_data <- data.frame(summary(category, i))
+        if(ncol(summary_data)==8){
           names(summary_data) <- c("河川", "種類", "樣站數", "樣本涵蓋率","觀測物種數",
-                                   "估計物種數", "標準差", "95%CI下界","95%CI上界")  # 替換成您的列名
+                                   "估計物種數", "Shannon", "Simpson")  # 替換列名
           summary_data
         }else{
           print("該河川無此項物種")
         }
         
-      }) 
+      }) # 原始
       output$plot <- renderUI({
-        merged_data <- map_plot_result(results, i)
+        category <- as.numeric(input$category)
+        merged_data <- map_plot_result(all_species, category, i)
         station_names <- merged_data$locality
         station_numbers <- seq_along(station_names)
         num_rows <- nrow(merged_data)
@@ -617,9 +654,10 @@ server <- shinyServer(function(input, output, session) {
         fluidRow(
           columns
         )
-      })
+      }) # 推薦樣站
       output$opm_summary <- renderTable({
-        recommend_plot(i)
+        category <- as.numeric(input$category)
+        recommend_plot(category,i)
       }) # 篩選結果
       
       # out 表格
@@ -660,25 +698,25 @@ server <- shinyServer(function(input, output, session) {
   
   # 下載選定的資料檔案
   
-  
-  output$downloadData <- downloadHandler(
-    filename = function() {
-      paste(input$data, ".xlsx", sep="")
-    },
-    content = function(file) {
-      df <- switch(input$data,
-                   "推薦樣站總表" = {
-                     merged_data <- map_plot_result(results, 1:26)
-                     river_name <- merged_data$RV_NAME
-                     station_names <- merged_data$locality
-                     data.frame('主流名稱' = river_name,
-                                '推薦樣站' = station_names)
-                   },
-                   "推薦樣站統計結果總表" = df_org)
-      write_xlsx(df, file)
-    }
-  )
-  
+    
+      output$downloadData <- downloadHandler(
+        filename = function() {
+          paste(input$data, ".xlsx", sep="")
+        },
+        content = function(file) {
+          df <- switch(input$data,
+                       "推薦樣站總表" = {
+                         merged_data <- map_plot_result(all_species,  input$category, 1:26)
+                         river_name <- merged_data$RV_NAME
+                         station_names <- merged_data$locality
+                         data.frame('主流名稱' = river_name,
+                                    '推薦樣站' = station_names)
+                       },
+                       "推薦樣站統計結果總表" = df_org)
+          write_xlsx(df, file)
+        }
+      )
+    
   
   
   
