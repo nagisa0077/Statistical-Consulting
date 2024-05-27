@@ -562,10 +562,11 @@ server <- shinyServer(function(input, output, session) {
                           tags$div(class = "circleorange", style = 'margin-left: 10px;' ),
                           tags$span(tags$b("未被挑選到的樣站", style='font-size: 20px; margin-left: 5px;')),
                           style = "display: flex; justify-content: flex-end; align-items: center;")
+        print <- NULL
         }else{
         img <- NULL
         point <- NULL
-        h3(tags$b("此河流無該物種"))
+        print <- h3(tags$b("此河流無該物種"))
       }
       
       # Plot
@@ -593,7 +594,8 @@ server <- shinyServer(function(input, output, session) {
           img,
           tags$br(),
           tags$br(),
-          point
+          point,
+          print
         )
         HTML(info_text)
       })
@@ -661,37 +663,62 @@ server <- shinyServer(function(input, output, session) {
       }) # 篩選結果
       
       # out 表格
-      output$conditional_content <- renderUI({
-        btn_sum <- sum(sapply(1:26, function(i) input[[paste0("btn_", i)]]))
-        if (btn_sum > 0) {
-          tags$div(
-            id = "button_panel",
-            absolutePanel(
-              draggable = F,  
-              top = 10,         
-              left = l + 550,        
-              width = 800,       
-              height = "auto",
-              tabsetPanel(
-                type = "pills",
-                tabPanel(tags$b("推薦樣站地圖"), uiOutput("river_info")),
-                tabPanel(tags$b("推薦樣站統計資訊"),
-                         
-                         h3(tags$b("原始資料統計結果")),
-                         uiOutput("table_ori_summary"),
-                         h3(tags$b(river_name <- rv3$RV_NAME[which(rv3$NO == i)],"推薦樣站")),
-                         uiOutput("table_plot"),
-                         h3(tags$b("推薦樣站統計結果")),
-                         uiOutput("table_opm_summary")
-                         
-                )
-              ) 
+      if(is.null(print)){
+        output$conditional_content <- renderUI({
+          btn_sum <- sum(sapply(1:26, function(i) input[[paste0("btn_", i)]]))
+          if (btn_sum > 0) {
+            tags$div(
+              id = "button_panel",
+              absolutePanel(
+                draggable = F,  
+                top = 10,         
+                left = l + 550,        
+                width = 800,       
+                height = "auto",
+                tabsetPanel(
+                  type = "pills",
+                  tabPanel(tags$b("推薦樣站地圖"), uiOutput("river_info")),
+                  tabPanel(tags$b("推薦樣站統計資訊"),
+                           
+                           h3(tags$b("原始資料統計結果")),
+                           uiOutput("table_ori_summary"),
+                           h3(tags$b(river_name <- rv3$RV_NAME[which(rv3$NO == i)],"推薦樣站")),
+                           uiOutput("table_plot"),
+                           h3(tags$b("推薦樣站統計結果")),
+                           uiOutput("table_opm_summary")
+                           
+                  )
+                ) 
+              )
             )
-          )
-        } else {
-          NULL
-        }
-      })
+          } else {
+            NULL
+          }
+        })
+      }else{
+        output$conditional_content <- renderUI({
+          btn_sum <- sum(sapply(1:26, function(i) input[[paste0("btn_", i)]]))
+          if (btn_sum > 0) {
+            tags$div(
+              id = "button_panel",
+              absolutePanel(
+                draggable = F,
+                top = 10,
+                left = l + 550,
+                width = 800,
+                height = "auto",
+                tabsetPanel(
+                  type = "pills",
+                  h3(tags$b("該河川無此物種"))
+                  )
+                )
+              )
+          } else {
+            NULL
+          }
+        })
+      }
+      
       
     })
   })}
