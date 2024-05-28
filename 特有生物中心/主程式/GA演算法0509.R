@@ -1,4 +1,4 @@
-
+load(file.choose())
 load("C:/Users/User/Downloads/Incidence_data.RData")
 library(glmnet)
 library(compiler)
@@ -416,15 +416,14 @@ for (i in miss) {
 
 save(result,result_cv,add,result_nos,file = 'result_fish')
 
-#result ->  推薦河川(覆蓋度 > 0.9，找最大個體數)
-#result1 -> 最後推薦河川 (cov > 0.9，找最大個體數，有每一條支流)
-#or_cv -> 原始全部樣站覆蓋度
-#or_nos -> 原始全部樣站個體數
-#result_nos ->  推薦河川覆蓋度
-#result_nos1 ->  最後推薦河川覆蓋度
-#result_cv ->  推薦河川個體數
-#result_cv1 ->  最後推薦河川個體數
-
+result #->  推薦河川(覆蓋度 > 0.9，找最大個體數)
+result1 #-> 最後推薦河川 (cov > 0.9，找最大個體數，有每一條支流)
+or_cv #-> 原始全部樣站覆蓋度
+or_nos #-> 原始全部樣站個體數
+result_nos #->  推薦河川覆蓋度
+result_nos1 #->  最後推薦河川覆蓋度
+result_cv #->  推薦河川個體數
+result_cv1 #->  最後推薦河川個體數
 
 
 
